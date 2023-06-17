@@ -1,4 +1,4 @@
-# robofinder
+# Robofinder
 This script searches for old 'robots.txt' files of the given url on archive.org and returns all the old paths.
 # Installation & Usage
 ```bash
