@@ -56,6 +56,7 @@ def getrobo(args, datalist):
 
     except ValueError:
         logger(args.silent,"There is a problem in response.","error")
+        exit(0)
     except Exception as e:
         logger(args.silent,e,"error")
 
@@ -73,7 +74,7 @@ def main():
         args = setup_argparse()
         datalist = getArchives(args)
         robo = getrobo(args,datalist)
-        if robo != []:
+        if robo != [] and robo != None:
             if args.output:
                 saveToFile(args,robo,args.output)
             logger(args.silent,"Results:","success")
