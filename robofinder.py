@@ -96,7 +96,6 @@ def getRobo(args, data):
     url = "https://web.archive.org/web/{}if_/{}".format(data[0], data[1])
     response = sendRequest(args, url)
     if response != "":
-        print(response.text)
         return response.text
 
     return ""
