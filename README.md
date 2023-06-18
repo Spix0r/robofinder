@@ -18,3 +18,7 @@ Run program in silent mode
 ```bash
 python3 robofinder.py -u url --silent
 ```
+You can run it with threads. My suggested number of threads is 10.
+```bash
+python3 robofinder.py -u url -t 10 -o results.txt
+```
