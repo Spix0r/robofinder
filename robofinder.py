@@ -4,6 +4,7 @@ import argparse
 import time
 from colorama import Fore
 import concurrent.futures
+import re
 
 def logger(silent, message, TYPE):
     if silent != True:
@@ -57,24 +58,19 @@ def sendRequest(args, url):
 
     return response
 
-def extract(args, response):
-    if response != "":
-        response_2 = []
-        response_1 = response.split('\n')
-        if "\n" not in response:
-            for char in response_1:
-                r = char.split(' ')
-                for i in r:
-                    x = r.index(i)
-                    if ':' in i:
-                        response_2.append(r[x + 1])
-            return response_2
-
-        for char in response_1:
-            r = char.split(': ')
-            if len(r) > 1:
-                response_2.append(r[1].strip())
-        return response_2
+def extract(args,response):
+    robots = []
+    final = []
+    regex = r"Allow:\s*\S+|Disallow:\s*\S+|Sitemap:\s*\S+"
+    directive_regex = re.compile("(allow|disallow|user[-]?agent|sitemap|crawl-delay):[ \t]*(.*)", re.IGNORECASE)
+    lines = re.findall(regex, response)
+    for line in lines:
+        d = directive_regex.findall(line)
+        robots.append(d)
+    if robots != []:
+        for i in robots:
+            final.append(i[0][1])
+    return final
 
 def getArchives(args):
     logger(args.silent, "Sending an HTTP request to the archive to obtain all paths for robots.txt files.", "pending")
