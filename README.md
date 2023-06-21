@@ -8,17 +8,21 @@ pip install -r requirements.txt
 ```
 Run the program with the -u flag followed by the URL of the website you want to test.
 ```bash
-python3 robofinder.py -u example.com
+python3 robofinder.py -u https://example.com
 ```
 Save output to results.txt
 ```bash
-python3 robofinder.py -u url -o results.txt
+python3 robofinder.py -u https://example.com -o results.txt
+```
+Concatenate paths with site url
+```bash
+python3 robofinder.py -u https://example.com -c
 ```
 Run program in silent mode
 ```bash
-python3 robofinder.py -u url --silent
+python3 robofinder.py -u https://example.com --silent
 ```
 You can run it with threads. My suggested number of threads is 10.
 ```bash
-python3 robofinder.py -u url -t 10 -o results.txt
+python3 robofinder.py -u https://example.com -t 10 -c -o results.txt
 ```
