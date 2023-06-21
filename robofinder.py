@@ -1,64 +1,34 @@
-import requests
-import os
-import argparse
-import time
-from colorama import Fore
-import concurrent.futures
-import re
+from requests.sessions import Session
+from concurrent.futures import ThreadPoolExecutor
+from threading import local
+import signal,validators,re,datetime,argparse,time,requests
 
-def logger(silent, message, TYPE):
-    if silent != True:
-        if TYPE == "error":
-            print(Fore.LIGHTCYAN_EX + "[" + Fore.LIGHTYELLOW_EX + "✗" + Fore.LIGHTCYAN_EX + "] " + Fore.RED + message + Fore.RESET)
-        elif TYPE == "success":
-            print(Fore.LIGHTCYAN_EX + "[" + Fore.LIGHTYELLOW_EX + "✓" + Fore.LIGHTCYAN_EX + "] " + Fore.LIGHTWHITE_EX + message + Fore.RESET)
-        elif TYPE == "pending":
-            print(Fore.LIGHTCYAN_EX + "[" + Fore.LIGHTYELLOW_EX + "*" + Fore.LIGHTCYAN_EX + "] " + Fore.LIGHTWHITE_EX + message + Fore.RESET)
-        time.sleep(0.30)
+
+class colors:
+    PURPLE = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    WARNING = '\033[93m'
+    ERROR = '\033[91m'
+    ENDC = '\033[0m'
+
+def logger(debug, message):
+    current_time = datetime.datetime.now()
+    formatted_time = current_time.strftime("%H:%M:%S")
+    if debug == True:
+        print(colors.CYAN + "[" + colors.WARNING + "debug" + colors.CYAN + "][" + colors.ENDC + formatted_time + colors.CYAN + "] " + colors.ENDC + message)
 
 def setup_argparse():
     parser = argparse.ArgumentParser(description="Robo Finder")
-    parser.add_argument("--silent", action="store_true", default=False, help="Make Program Silent")
+    parser.add_argument("--debug", action="store_true", default=False, help="enable debugging mode.")
     parser.add_argument('--url', '-u', dest='url', type=str, help='Give me the URL', required=True)
     parser.add_argument('--output', '-o', dest='output', default=False, type=str, help='output file path')
-    parser.add_argument('--threads', '-t', dest='threads', default=1, type=int, help='number of threads to use')
+    parser.add_argument('--threads', '-t', dest='threads', default=10, type=int, help='number of threads to use')
+    parser.add_argument('-c',action="store_true", default=False, help='Concatenate paths with site url')
     return parser.parse_args()
 
-def sendRequest(args, url):
-    max_retries = 3
-    retry_count = 0
-    response = ""
-    while retry_count < max_retries:
-        try:
-            response = requests.get(url)
-            break
-
-        except requests.exceptions.SSLError:
-            #logger(args.silent, "SSL ERROR occurred. Retrying in 10 seconds...", "error")
-            time.sleep(10)
-            logger(args.silent, "Sending request again to {}".format(url), "pending")
-            retry_count += 1
-        except requests.exceptions.ConnectTimeout:
-            logger(args.silent, "Connecttion Timeout occurred. Retrying in 10 seconds...", "error")
-            time.sleep(10)
-            logger(args.silent, "Sending request again to {}".format(url), "pending")
-            retry_count += 1
-
-        except requests.exceptions.ConnectionError:
-            logger(args.silent, "ConnectionError occurred. Retrying in 10 seconds...", "error")
-            time.sleep(10)
-            logger(args.silent, "Sending request again to {}".format(url), "pending")
-            retry_count += 1
-
-        except requests.exceptions.ChunkedEncodingError:
-            #logger(args.silent, "ChunkedEncodingError occurred. Retrying in 30 seconds...", "error")
-            time.sleep(15)
-            logger(args.silent, "Sending request again to {}".format(url), "pending")
-            retry_count += 1
-
-    return response
-
-def extract(args,response):
+def extract(response):
     robots = []
     final = []
     regex = r"Allow:\s*\S+|Disallow:\s*\S+|Sitemap:\s*\S+"
@@ -72,80 +42,126 @@ def extract(args,response):
             final.append(i[0][1])
     return final
 
-def getArchives(args):
-    logger(args.silent, "Sending an HTTP request to the archive to obtain all paths for robots.txt files.", "pending")
-    response = sendRequest(args, "https://web.archive.org/cdx/search/cdx?url={}/robots.txt&output=json&fl=timestamp,original&filter=statuscode:200&collapse=digest".format(args.url))
+def get_all_links(args) -> list:
+    logger(args.debug, "Sending an HTTP request to the archive to obtain all paths for robots.txt files.")
+    try:
+        obj = requests.get("https://web.archive.org/cdx/search/cdx?url={}/robots.txt&output=json&fl=timestamp,original&filter=statuscode:200&collapse=digest".format(args.url)).json()
+    except:
+        logger(args.debug, "Failed to obtain data from the archive. Exiting...")
+        exit(1)
+    url_list = []
+    for i in obj:
+        url_list.append("https://web.archive.org/web/{}if_/{}".format(i[0],i[1]))
 
-    if response != "":
-        response = response.json()
-        logger(args.silent, "Got the data as JSON objects.", "success")
-        logger(args.silent, "Requests count : {}".format(len(response)),"success")
-        if ['timestamp', 'original'] in response:
-            response.remove(['timestamp', 'original'])
+    logger(args.debug, "Got the data as JSON objects.")
+    logger(args.debug, "Requests count : {}".format(len(url_list)))
+    if "https://web.archive.org/web/timestampif_/original" in url_list:
+        url_list.remove("https://web.archive.org/web/timestampif_/original")
+    return url_list
+thread_local = local()
 
-        if response == [] or response == None:
-            return []
+def get_session() -> Session:
+    if not hasattr(thread_local,'session'):
+        thread_local.session = requests.Session()
+    return thread_local.session
+
+def concatinate(args,results) -> list:
+    concatinated = []
+    try:
+        for i in results:
+            if validators.url(i) != True:
+                if i != "":
+                    if i[0] == "/":
+                        concatinated.append(args.url+i)
+                    else:
+                        concatinated.append(args.url+"/"+i)
+            elif validators.url(i) == True:
+                concatinated.append(i)
+    except Exception as e:
+        logger(args.debug, "Error occurred while concatinating paths. {}".format(e))
+
+    return concatinated
+           
+def fetchFiles(url:str):
+    session = get_session()
+    max_retries = 3
+    retry_count = 0
+    response = ""
+    while retry_count < max_retries:
+        try:
+            response =  session.get(url)
+            logger(args.debug, "HTTP Request Sent to {}".format(url))
+            break
+
+        except requests.exceptions.SSLError:
+            time.sleep(1)
+            logger(args.debug, "Sending request again to {}".format(url))
+            retry_count += 1
+        except requests.exceptions.ConnectTimeout:
+            logger(args.debug, "Connecttion Timeout occurred. Retrying in 10 seconds...")
+            time.sleep(1)
+            logger(args.debug, "Sending request again to {}".format(url))
+            retry_count += 1
+
+        except requests.exceptions.ConnectionError:
+            logger(args.debug, "ConnectionError occurred. Retrying in 10 seconds...")
+            time.sleep(1)
+            logger(args.debug, "Sending request again to {}".format(url))
+            retry_count += 1
+
+        except requests.exceptions.ChunkedEncodingError:
+            logger(args.debug, "ChunkedEncodingError occurred. Retrying in 30 seconds...")
+            time.sleep(5)
+            logger(args.debug, "Sending request again to {}".format(url))
+            retry_count += 1
 
     return response
 
-def getRobo(args, data):
-    url = "https://web.archive.org/web/{}if_/{}".format(data[0], data[1])
-    response = sendRequest(args, url)
-    if response != "":
-        return response.text
+def handle_sigint(signal_number, stack_frame):
+    print("Keyboard interrupt detected, stopping processing.")
+    raise KeyboardInterrupt()
 
-    return ""
-
-def findrobo(args, archive):
+def startProccess(urls,args) -> list:
+    signal.signal(signal.SIGINT, handle_sigint)
+    responses = []
+    logger(args.debug, "Sending a bunch of HTTP requests to fetch all robots.txt files.")
     try:
-        robolist = []
-        if archive != []:
-            logger(args.silent, "Sending HTTP requests to obtain old robots.txt files...", "pending")
-            with concurrent.futures.ThreadPoolExecutor(max_workers=args.threads) as executor:
-                results = [executor.submit(getRobo, args, url) for url in archive]
-            logger(args.silent, "Processing responses...", "pending")
-            for result in concurrent.futures.as_completed(results):
-                response = result.result()
-                if response != "":
-                    logger(args.silent, "Extracting all paths from robots.txt files.", "pending")
-                    extracted = extract(args, response)
-                    if extracted != [] and extracted != None:
-                        for i in extracted:
-                            if i not in robolist and i != "*":
-                                robolist.append(i)
-            return robolist
-        
-        else:
-            return []
+        with ThreadPoolExecutor(max_workers=args.threads) as executor:
+            for resp in executor.map(fetchFiles,urls):
+                responses.append(resp.text)
+    except KeyboardInterrupt:
+        logger(args.debug,"Keyboard interrupt detected, stopping processing.")
+        exit(1)
+    return responses
 
-    except Exception as e:
-        logger(args.silent, e, "error")
-
-def saveToFile(args, data, name):
-    logger(args.silent, "Saving results to result.txt {}".format(name), "pending")
-    __path__ = os.path.dirname(os.path.realpath(__file__)) + "/{}".format(name)
-    with open(__path__, "a") as f:
-        for i in data:
-            f.writelines("{}\n".format(i))
-    logger(args.silent, "All results saved to {}".format(name), "success")
+args = setup_argparse()
 
 
 def main():
-    try:
-        args = setup_argparse()
-        datalist = getArchives(args)
-        robo = findrobo(args, datalist)
-        if robo != [] and robo != None:
-            if args.output:
-                saveToFile(args, robo, args.output)
-            logger(args.silent, "Results:", "success")
-            for r in robo:
-                print(r)
-        else:
-            logger(args.silent, "There is no results.", "error")
-    except KeyboardInterrupt:
-        logger(args.silent, "Program terminated by user.", "error")
-
+    start = time.time()
+    logger(args.debug, "Starting the program.")
+    url_list = get_all_links(args)
+    resps = startProccess(url_list,args)
+    results = []
+    logger(args.debug, "Extracting all paths from robots.txt files.")
+    end = time.time()
+    logger(args.debug, "Time taken : {} seconds".format(end-start))
+    for resp in resps:
+        res = extract(resp)
+        results = results + res
+    results = list(set(results))
+    if args.c == True:
+        logger(args.debug, "Concatinating paths with the site url.")
+        results = concatinate(args,results)
+    logger(args.debug, "Total number of paths found : {}".format(len(results)))
+    if args.output != False:
+        logger(args.debug, "Writing the output to {}".format(args.output))
+        with open(args.output,'w') as f:
+            for i in results:
+                f.write(i+"\n")
+        logger(args.debug, "Done writing the output to {}".format(args.output))
+    for i in results:
+        print(i)
 
 if __name__ == "__main__":
     main()
