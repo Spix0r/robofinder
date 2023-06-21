@@ -57,6 +57,9 @@ def get_all_links(args) -> list:
     logger(args.debug, "Requests count : {}".format(len(url_list)))
     if "https://web.archive.org/web/timestampif_/original" in url_list:
         url_list.remove("https://web.archive.org/web/timestampif_/original")
+    if len(url_list) == 0:
+        logger(args.debug, "No robots.txt files found in the archive. Exiting...")
+        exit(1)
     return url_list
 thread_local = local()
 
@@ -150,6 +153,9 @@ def main():
         res = extract(resp)
         results = results + res
     results = list(set(results))
+    if len(results) == 0:
+        logger(args.debug, "No paths found. Exiting...")
+        exit(1)
     if args.c == True:
         logger(args.debug, "Concatinating paths with the site url.")
         results = concatinate(args,results)
