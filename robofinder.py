@@ -131,7 +131,8 @@ def startProccess(urls,args) -> list:
     try:
         with ThreadPoolExecutor(max_workers=args.threads) as executor:
             for resp in executor.map(fetchFiles,urls):
-                responses.append(resp.text)
+                if resp != "":
+                    responses.append(resp.text)
     except KeyboardInterrupt:
         logger(args.debug,"Keyboard interrupt detected, stopping processing.")
         exit(1)
