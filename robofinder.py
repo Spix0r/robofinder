@@ -101,19 +101,19 @@ def fetchFiles(url:str):
             logger(args.debug, "Sending request again to {}".format(url))
             retry_count += 1
         except requests.exceptions.ConnectTimeout:
-            logger(args.debug, "Connecttion Timeout occurred. Retrying in 10 seconds...")
+            logger(args.debug, "Connecttion Timeout occurred. Retrying in 1 second...")
             time.sleep(1)
             logger(args.debug, "Sending request again to {}".format(url))
             retry_count += 1
 
         except requests.exceptions.ConnectionError:
-            logger(args.debug, "ConnectionError occurred. Retrying in 10 seconds...")
+            logger(args.debug, "ConnectionError occurred. Retrying in 1 second...")
             time.sleep(1)
             logger(args.debug, "Sending request again to {}".format(url))
             retry_count += 1
 
         except requests.exceptions.ChunkedEncodingError:
-            logger(args.debug, "ChunkedEncodingError occurred. Retrying in 30 seconds...")
+            logger(args.debug, "ChunkedEncodingError occurred. Retrying in 5 seconds...")
             time.sleep(5)
             logger(args.debug, "Sending request again to {}".format(url))
             retry_count += 1
