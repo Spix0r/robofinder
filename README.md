@@ -13,7 +13,7 @@
 
 Clone the repository and install the required dependencies:
 ```bash
-git clone https://github.com/S7r4n6er/robofinder.git
+git clone https://github.com/0xSpidey/robofinder.git
 cd robofinder
 pip install -r requirements.txt
 ```
