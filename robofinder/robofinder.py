@@ -3,7 +3,6 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import local
 import signal,validators,re,datetime,argparse,time,requests
 
-
 class colors:
     PURPLE = '\033[95m'
     BLUE = '\033[94m'
@@ -13,6 +12,16 @@ class colors:
     ERROR = '\033[91m'
     ENDC = '\033[0m'
 
+def showBanner():
+    print(colors.CYAN + r"""
+    ____        __          _____           __         
+   / __ \____  / /_  ____  / __(_)___  ____/ /__  _____
+  / /_/ / __ \/ __ \/ __ \/ /_/ / __ \/ __  / _ \/ ___/
+ / _, _/ /_/ / /_/ / /_/ / __/ / / / / /_/ /  __/ /    
+/_/ |_|\____/_____/\____/_/ /_/_/ /_/\____/\___/_/
+                                """+
+    colors.PURPLE + "github.com/Spix0r\n" + colors.ENDC)
+
 def logger(debug, message):
     current_time = datetime.datetime.now()
     formatted_time = current_time.strftime("%H:%M:%S")
@@ -21,11 +30,15 @@ def logger(debug, message):
 
 def setup_argparse():
     parser = argparse.ArgumentParser(description="Robo Finder")
+    parser.add_argument('--silent', '-s', action="store_true", default=False, help='It Makes program silent')
+    if not parser.parse_known_args()[0].silent:
+        showBanner()
     parser.add_argument("--debug", action="store_true", default=False, help="enable debugging mode.")
     parser.add_argument('--url', '-u', dest='url', type=str, help='Give me the URL', required=True)
     parser.add_argument('--output', '-o', dest='output', default=False, type=str, help='output file path')
     parser.add_argument('--threads', '-t', dest='threads', default=10, type=int, help='number of threads to use')
     parser.add_argument('-c',action="store_true", default=False, help='Concatenate paths with site url')
+        
     return parser.parse_args()
 
 def extract(response):
@@ -139,7 +152,6 @@ def startProccess(urls,args) -> list:
     return responses
 
 args = setup_argparse()
-
 
 def main():
     start = time.time()
