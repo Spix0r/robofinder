@@ -11,16 +11,16 @@
 
 ## Installation
 
-### Using pipx (Recommended)
+### Using pipx
 The easiest way to install Robofinder is using pipx:
 ```bash
-pipx install git+https://github.com/gnomegl/robofinder-pipx.git
+pipx install git+https://github.com/Spix0r/robofinder.git
 ```
 
 ### Manual Installation
 Alternatively, you can install it manually:
 ```bash
-git clone https://github.com/gnomegl/robofinder-pipx.git
+git clone https://github.com/Spix0r/robofinder.git
 cd robofinder
 pip install -r requirements.txt
 ```
