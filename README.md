@@ -11,16 +11,28 @@
 
 ## Installation
 
-Clone the repository and install the required dependencies:
+### Using pipx (Recommended)
+The easiest way to install Robofinder is using pipx:
 ```bash
-git clone https://github.com/Spix0r/robofinder.git
+pipx install git+https://github.com/gnomegl/robofinder-pipx.git
+```
+
+### Manual Installation
+Alternatively, you can install it manually:
+```bash
+git clone https://github.com/gnomegl/robofinder-pipx.git
 cd robofinder
 pip install -r requirements.txt
 ```
 
 ## Usage
 
-Run the program by providing a URL with the `-u` flag:
+If installed with pipx, simply run:
+```bash
+robofinder -u https://example.com
+```
+
+If installed manually:
 ```bash
 python3 robofinder.py -u https://example.com
 ```
@@ -29,24 +41,28 @@ python3 robofinder.py -u https://example.com
 
 - **Save output to file**:
   ```bash
-  python3 robofinder.py -u https://example.com -o results.txt
+  robofinder -u https://example.com -o results.txt
   ```
 - **Concatenate paths with site URL**:
   ```bash
-  python3 robofinder.py -u https://example.com -c
+  robofinder -u https://example.com -c
   ```
-- **Run in silent mode** (no console output):
+- **Run in debug mode**:
   ```bash
-  python3 robofinder.py -u https://example.com --silent
+  robofinder -u https://example.com --debug
   ```
 - **Multi-threading** (default recommended: 10 threads):
   ```bash
-  python3 robofinder.py -u https://example.com -t 10 -c -o results.txt
+  robofinder -u https://example.com -t 10 -c -o results.txt
   ```
 
 ## Example
 
 Running Robofinder on `example.com` and saving the result to `results.txt` with 10 threads:
 ```bash
-python3 robofinder.py -u https://example.com -t 10 -o results.txt
+robofinder -u https://example.com -t 10 -o results.txt
 ```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
