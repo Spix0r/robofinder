@@ -1,24 +1,26 @@
 # Robofinder
 
-**Robofinder** is a Python script that allows you to search for and retrieve historical `robots.txt` files for any given website using Archive.org. This tool is particularly useful for security researchers and web archivists to discover previously accessible paths or directories that were once listed in a site's `robots.txt`.
+**Robofinder** is a powerful Python script designed to search for and retrieve historical `robots.txt` files from Archive.org for any given website. This tool is ideal for security researchers, web archivists, and penetration testers to uncover previously accessible paths or directories that were listed in a site's `robots.txt`.
 
 ## Features
 - Fetch historical `robots.txt` files from Archive.org.
 - Extract and display old paths or directories that were once disallowed or listed.
-- Option to save the output to a file.
-- Silent mode for unobtrusive execution.
-- Multi-threading support to speed up the search process.
+- Save results to a specified output file.
+- **Silent Mode** for unobtrusive execution.
+- Multi-threading support for faster processing.
+- Option to concatenate extracted paths with the base URL for easy access.
+- Debug mode for detailed execution logs.
 
 ## Installation
 
-### Using pipx
-The easiest way to install Robofinder is using pipx:
+### Using `pipx`
+Install Robofinder quickly and securely using `pipx`:
 ```bash
 pipx install git+https://github.com/Spix0r/robofinder.git
 ```
 
 ### Manual Installation
-Alternatively, you can install it manually:
+To install manually:
 ```bash
 git clone https://github.com/Spix0r/robofinder.git
 cd robofinder
@@ -27,42 +29,59 @@ pip install -r requirements.txt
 
 ## Usage
 
-If installed with pipx, simply run:
+### Basic Command
+If installed via `pipx`:
 ```bash
 robofinder -u https://example.com
 ```
 
-If installed manually:
+For manual installation:
 ```bash
 python3 robofinder.py -u https://example.com
 ```
 
-### Additional Options
+### Options and Examples
 
-- **Save output to file**:
+- **Save output to a file**:
   ```bash
   robofinder -u https://example.com -o results.txt
   ```
-- **Concatenate paths with site URL**:
+
+- **Silent Mode** (minimal output to console):
+  ```bash
+  robofinder -u https://example.com -s
+  ```
+
+- **Concatenate paths with the base URL**:
   ```bash
   robofinder -u https://example.com -c
   ```
-- **Run in debug mode**:
+
+- **Enable Debug Mode**:
   ```bash
   robofinder -u https://example.com --debug
   ```
-- **Multi-threading** (default recommended: 10 threads):
+
+- **Multi-threading** (default: 10 threads):
   ```bash
-  robofinder -u https://example.com -t 10 -c -o results.txt
+  robofinder -u https://example.com -t 10
   ```
 
-## Example
-
-Running Robofinder on `example.com` and saving the result to `results.txt` with 10 threads:
+### Advanced Usage
+Combine options for tailored execution:
 ```bash
-robofinder -u https://example.com -t 10 -o results.txt
+robofinder -u https://example.com -t 10 -c -o results.txt -s
+```
+
+## Example Output
+
+Running Robofinder on `example.com` with 10 threads, silent mode, and saving the result to `results.txt`:
+```bash
+robofinder -u https://example.com -t 10 -o results.txt -s
 ```
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are highly welcome! If you have ideas for new features, optimizations, or bug fixes, feel free to submit a Pull Request or open an issue on the [GitHub repository](https://github.com/Spix0r/robofinder).
+
+---
