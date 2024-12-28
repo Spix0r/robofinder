@@ -1,3 +1,4 @@
-validators
-argparse
+validators~=0.34.0
+argparse~=1.4.0
 requests==2.32.3
+args~=0.1.0

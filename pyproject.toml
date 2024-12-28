@@ -6,19 +6,38 @@ build-backend = "hatchling.build"
 name = "robofinder"
 version = "0.1.0"
 description = "A tool for finding robots.txt files"
+long-description = "This tool helps you find robots.txt files from websites, useful for web scraping and SEO purposes."
+long-description-content-type = "text/markdown"
 authors = [
     { name = "Spix0r", email = "0xspidey@proton.me" },
     { name = "gnomegl" }
 ]
+license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
     "validators",
-    "requests==2.32.3"
+    "requests>=2.32.3,<3.0.0"
 ]
 
+# Optional: Test dependencies section
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "tox"
+]
+
+# Specify entry points for the script
 [project.scripts]
 robofinder = "robofinder.__main__:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["robofinder"]
+
+# Metadata section for additional project information
+[tool.hatch.metadata]
+keywords = ["robots.txt", "web scraping", "SEO", "finder", "tool"]
+homepage = "https://github.com/Spix0r/robofinder"
+documentation = "https://robofinder.readthedocs.io"
+repository = "https://github.com/Spix0r/robofinder"

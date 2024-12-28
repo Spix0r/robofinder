@@ -30,7 +30,7 @@ pip install -r requirements.txt
 ## Usage
 
 ### Basic Command
-If installed via `pipx`:
+If installed via `pipx`, run the following command:
 ```bash
 robofinder -u https://example.com
 ```
@@ -85,3 +85,8 @@ robofinder -u https://example.com -t 10 -o results.txt -s
 Contributions are highly welcome! If you have ideas for new features, optimizations, or bug fixes, feel free to submit a Pull Request or open an issue on the [GitHub repository](https://github.com/Spix0r/robofinder).
 
 ---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```
