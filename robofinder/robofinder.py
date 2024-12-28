@@ -1,9 +1,18 @@
-from requests.sessions import Session
+import sys
+import signal
+import re
+import time
+import datetime
+import argparse
+import requests
 from concurrent.futures import ThreadPoolExecutor
 from threading import local
-import signal,validators,re,datetime,argparse,time,requests
+from requests.sessions import Session
+import validators
 
-class colors:
+
+# Colors for terminal output
+class Colors:
     PURPLE = '\033[95m'
     BLUE = '\033[94m'
     CYAN = '\033[96m'
@@ -12,36 +21,44 @@ class colors:
     ERROR = '\033[91m'
     ENDC = '\033[0m'
 
-def showBanner():
-    print(colors.CYAN + r"""
+
+def show_banner():
+    """Displays the program banner."""
+    print(Colors.CYAN + r"""
     ____        __          _____           __         
    / __ \____  / /_  ____  / __(_)___  ____/ /__  _____
   / /_/ / __ \/ __ \/ __ \/ /_/ / __ \/ __  / _ \/ ___/
  / _, _/ /_/ / /_/ / /_/ / __/ / / / / /_/ /  __/ /    
 /_/ |_|\____/_____/\____/_/ /_/_/ /_/\____/\___/_/
-                                """+
-    colors.PURPLE + "github.com/Spix0r\n" + colors.ENDC)
+                                """ + Colors.PURPLE + "github.com/Spix0r\n" + Colors.ENDC)
+
 
 def logger(debug, message):
-    current_time = datetime.datetime.now()
-    formatted_time = current_time.strftime("%H:%M:%S")
-    if debug == True:
-        print(colors.CYAN + "[" + colors.WARNING + "debug" + colors.CYAN + "][" + colors.ENDC + formatted_time + colors.CYAN + "] " + colors.ENDC + message)
+    """Logs messages with a timestamp."""
+    if debug:
+        current_time = datetime.datetime.now()
+        formatted_time = current_time.strftime("%H:%M:%S")
+        print(Colors.CYAN + f"[{Colors.WARNING}debug{Colors.CYAN}][{formatted_time}] {message}{Colors.ENDC}")
+
 
 def setup_argparse():
+    """Sets up the command-line argument parser."""
     parser = argparse.ArgumentParser(description="Robo Finder")
-    parser.add_argument('--silent', '-s', action="store_true", default=False, help='It Makes program silent')
+    parser.add_argument('--silent', '-s', action="store_true", help='Suppress program output')
     if not parser.parse_known_args()[0].silent:
-        showBanner()
-    parser.add_argument("--debug", action="store_true", default=False, help="enable debugging mode.")
-    parser.add_argument('--url', '-u', dest='url', type=str, help='Give me the URL', required=True)
-    parser.add_argument('--output', '-o', dest='output', default=False, type=str, help='output file path')
-    parser.add_argument('--threads', '-t', dest='threads', default=10, type=int, help='number of threads to use')
-    parser.add_argument('-c',action="store_true", default=False, help='Concatenate paths with site url')
-        
+        show_banner()
+
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode.")
+    parser.add_argument('--url', '-u', required=True, help='Target URL')
+    parser.add_argument('--output', '-o', help='Output file path')
+    parser.add_argument('--threads', '-t', default=10, type=int, help='Number of threads to use')
+    parser.add_argument('-c', action="store_true", help='Concatenate paths with site URL')
+
     return parser.parse_args()
 
+
 def extract(response):
+    """Extracts relevant directives from a robots.txt response."""
     robots = []
     final = []
     regex = r"Allow:\s*\S+|Disallow:\s*\S+|Sitemap:\s*\S+"
@@ -50,137 +67,144 @@ def extract(response):
     for line in lines:
         d = directive_regex.findall(line)
         robots.append(d)
-    if robots != []:
-        for i in robots:
-            final.append(i[0][1])
+
+    for i in robots:
+        final.append(i[0][1])
     return final
 
-def get_all_links(args) -> list:
-    logger(args.debug, "Sending an HTTP request to the archive to obtain all paths for robots.txt files.")
-    try:
-        obj = requests.get("https://web.archive.org/cdx/search/cdx?url={}/robots.txt&output=json&fl=timestamp,original&filter=statuscode:200&collapse=digest".format(args.url)).json()
-    except:
-        logger(args.debug, "Failed to obtain data from the archive. Exiting...")
-        exit(1)
-    url_list = []
-    for i in obj:
-        url_list.append("https://web.archive.org/web/{}if_/{}".format(i[0],i[1]))
 
-    logger(args.debug, "Got the data as JSON objects.")
-    logger(args.debug, "Requests count : {}".format(len(url_list)))
+def get_all_links(args):
+    """Fetches all robots.txt files from the Wayback Machine."""
+    logger(args.debug, "Sending an HTTP request to fetch all robots.txt paths from the archive.")
+    try:
+        response = requests.get(
+            f"https://web.archive.org/cdx/search/cdx?url={args.url}/robots.txt&output=json&fl=timestamp,original&filter=statuscode:200&collapse=digest").json()
+    except requests.RequestException:
+        logger(args.debug, "Failed to obtain data from the archive. Exiting...")
+        sys.exit(1)
+
+    url_list = [f"https://web.archive.org/web/{i[0]}if_/{i[1]}" for i in response]
+
+    logger(args.debug, f"Received {len(url_list)} robots.txt paths from the archive.")
+
     if "https://web.archive.org/web/timestampif_/original" in url_list:
         url_list.remove("https://web.archive.org/web/timestampif_/original")
-    if len(url_list) == 0:
-        logger(args.debug, "No robots.txt files found in the archive. Exiting...")
-        exit(1)
+
+    if not url_list:
+        logger(args.debug, "No robots.txt files found. Exiting...")
+        sys.exit(1)
+
     return url_list
+
+
 thread_local = local()
 
+
 def get_session() -> Session:
-    if not hasattr(thread_local,'session'):
+    """Returns a session object for making HTTP requests."""
+    if not hasattr(thread_local, 'session'):
         thread_local.session = requests.Session()
     return thread_local.session
 
-def concatinate(args,results) -> list:
-    concatinated = []
-    try:
-        for i in results:
-            if validators.url(i) != True:
-                if i != "":
-                    if i[0] == "/":
-                        concatinated.append(args.url+i)
-                    else:
-                        concatinated.append(args.url+"/"+i)
-            elif validators.url(i) == True:
-                concatinated.append(i)
-    except Exception as e:
-        logger(args.debug, "Error occurred while concatinating paths. {}".format(e))
 
-    return concatinated
-           
-def fetchFiles(url:str):
+def concatenate_paths(args, results) -> list:
+    """Concatenates paths with the site URL if necessary."""
+    concatenated = []
+    for path in results:
+        if validators.url(path):
+            concatenated.append(path)
+        else:
+            path = path.lstrip('/')
+            concatenated.append(f"{args.url}/{path}")
+    return concatenated
+
+
+def fetch_file(url: str) -> str:
+    """Fetches the content of a URL with retries."""
     session = get_session()
     max_retries = 3
     retry_count = 0
-    response = ""
+
     while retry_count < max_retries:
         try:
-            response =  session.get(url)
-            logger(args.debug, "HTTP Request Sent to {}".format(url))
-            break
-
-        except requests.exceptions.SSLError:
+            response = session.get(url)
+            logger(args.debug, f"HTTP Request Sent to {url}")
+            return response.text
+        except (requests.exceptions.RequestException, requests.exceptions.SSLError) as e:
+            logger(args.debug, f"Error occurred: {e}. Retrying...")
             time.sleep(1)
-            logger(args.debug, "Sending request again to {}".format(url))
-            retry_count += 1
-        except requests.exceptions.ConnectTimeout:
-            logger(args.debug, "Connecttion Timeout occurred. Retrying in 1 second...")
-            time.sleep(1)
-            logger(args.debug, "Sending request again to {}".format(url))
             retry_count += 1
 
-        except requests.exceptions.ConnectionError:
-            logger(args.debug, "ConnectionError occurred. Retrying in 1 second...")
-            time.sleep(1)
-            logger(args.debug, "Sending request again to {}".format(url))
-            retry_count += 1
+    return ""
 
-        except requests.exceptions.ChunkedEncodingError:
-            logger(args.debug, "ChunkedEncodingError occurred. Retrying in 5 seconds...")
-            time.sleep(5)
-            logger(args.debug, "Sending request again to {}".format(url))
-            retry_count += 1
-
-    return response
 
 def handle_sigint(signal_number, stack_frame):
+    """Handles keyboard interrupts gracefully."""
     print("Keyboard interrupt detected, stopping processing.")
     raise KeyboardInterrupt()
 
-def startProccess(urls,args) -> list:
+
+def start_process(urls, args):
+    """Starts the process of fetching all robots.txt files using multiple threads."""
     signal.signal(signal.SIGINT, handle_sigint)
     responses = []
-    logger(args.debug, "Sending a bunch of HTTP requests to fetch all robots.txt files.")
+    logger(args.debug, "Sending HTTP requests to fetch robots.txt files.")
+
     try:
         with ThreadPoolExecutor(max_workers=args.threads) as executor:
-            for resp in executor.map(fetchFiles,urls):
-                if resp != "":
-                    responses.append(resp.text)
+            for resp in executor.map(fetch_file, urls):
+                if resp:
+                    responses.append(resp)
     except KeyboardInterrupt:
-        logger(args.debug,"Keyboard interrupt detected, stopping processing.")
-        exit(1)
+        logger(args.debug, "Process interrupted by user.")
+        sys.exit(1)
+
     return responses
 
-args = setup_argparse()
 
 def main():
+    """Main function to execute the program."""
     start = time.time()
     logger(args.debug, "Starting the program.")
+
+    # Fetch the URLs
     url_list = get_all_links(args)
-    resps = startProccess(url_list,args)
+
+    # Fetch all robots.txt files
+    responses = start_process(url_list, args)
+
+    # Extract the paths from the robots.txt files
     results = []
-    logger(args.debug, "Extracting all paths from robots.txt files.")
-    end = time.time()
-    logger(args.debug, "Time taken : {} seconds".format(end-start))
-    for resp in resps:
-        res = extract(resp)
-        results = results + res
-    results = list(set(results))
-    if len(results) == 0:
+    logger(args.debug, "Extracting paths from robots.txt files.")
+    for resp in responses:
+        results.extend(extract(resp))
+
+    results = list(set(results))  # Remove duplicates
+
+    if not results:
         logger(args.debug, "No paths found. Exiting...")
-        exit(1)
-    if args.c == True:
-        logger(args.debug, "Concatinating paths with the site url.")
-        results = concatinate(args,results)
-    logger(args.debug, "Total number of paths found : {}".format(len(results)))
-    if args.output != False:
-        logger(args.debug, "Writing the output to {}".format(args.output))
-        with open(args.output,'w') as f:
-            for i in results:
-                f.write(i+"\n")
-        logger(args.debug, "Done writing the output to {}".format(args.output))
-    for i in results:
-        print(i)
+        sys.exit(1)
+
+    # Concatenate paths with URL if required
+    if args.c:
+        logger(args.debug, "Concatenating paths with the site URL.")
+        results = concatenate_paths(args, results)
+
+    logger(args.debug, f"Total number of paths found: {len(results)}")
+
+    # Write results to output file if specified
+    if args.output:
+        logger(args.debug, f"Writing the output to {args.output}")
+        with open(args.output, 'w') as f:
+            for path in results:
+                f.write(f"{path}\n")
+        logger(args.debug, f"Finished writing the output to {args.output}")
+
+    # Print results
+    for path in results:
+        print(path)
+
 
 if __name__ == "__main__":
+    args = setup_argparse()
     main()
