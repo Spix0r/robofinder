@@ -1,15 +1,16 @@
-import sys
-import signal
-import re
-import time
-import datetime
 import argparse
-import requests
+import datetime
+import re
+import signal
+import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from threading import local
-from requests.sessions import Session
+import args
+import requests
 import validators
-
+from requests.sessions import Session
+from werkzeug.utils import secure_filename  # Added import for secure_filename
 
 # Colors for terminal output
 class Colors:
@@ -62,7 +63,7 @@ def extract(response):
     robots = []
     final = []
     regex = r"Allow:\s*\S+|Disallow:\s*\S+|Sitemap:\s*\S+"
-    directive_regex = re.compile("(allow|disallow|user[-]?agent|sitemap|crawl-delay):[ \t]*(.*)", re.IGNORECASE)
+    directive_regex = re.compile("(allow|disallow|user-?agent|sitemap|crawl-delay):[ 	]*(.*)", re.IGNORECASE)
     lines = re.findall(regex, response)
     for line in lines:
         d = directive_regex.findall(line)
@@ -194,15 +195,22 @@ def main():
 
     # Write results to output file if specified
     if args.output:
-        logger(args.debug, f"Writing the output to {args.output}")
-        with open(args.output, 'w') as f:
-            for path in results:
-                f.write(f"{path}\n")
-        logger(args.debug, f"Finished writing the output to {args.output}")
+        try:
+            # Sanitize the output path to ensure it's safe using secure_filename
+            sanitized_path = secure_filename(args.output)  # Fix applied here
+            logger(args.debug, f"Writing the output to {sanitized_path}")
 
-    # Print results
-    for path in results:
-        print(path)
+            # Open the sanitized path and write the results to it
+            with open(sanitized_path, 'w') as f:
+                for path in results:
+                    f.write(f"{path}\n")
+
+            logger(args.debug, f"Finished writing the output to {sanitized_path}")
+        except ValueError as e:
+            # Handle invalid output path (path traversal error)
+            logger(args.debug, str(e))
+            print(f"Error: {e}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
