@@ -2,6 +2,8 @@ from requests.sessions import Session
 from concurrent.futures import ThreadPoolExecutor
 from threading import local
 import signal,validators,re,datetime,argparse,time,requests
+from urllib.parse import urlparse
+from urllib.parse import parse_qs
 
 class colors:
     PURPLE = '\033[95m'
@@ -37,8 +39,10 @@ def setup_argparse():
     parser.add_argument('--url', '-u', dest='url', type=str, help='Give me the URL', required=True)
     parser.add_argument('--output', '-o', dest='output', default=False, type=str, help='output file path')
     parser.add_argument('--threads', '-t', dest='threads', default=10, type=int, help='number of threads to use')
-    parser.add_argument('-c',action="store_true", default=False, help='Concatenate paths with site url')
-        
+    group = parser.add_argument_group('Output formats')
+    group = group.add_mutually_exclusive_group()
+    group.add_argument('-c',action="store_true", default=False, help='Concatenate paths with site url')
+    group.add_argument('-p', action="store_true", default=False, help='Extract all parameters.' )
     return parser.parse_args()
 
 def extract(response):
@@ -151,6 +155,17 @@ def startProccess(urls,args) -> list:
         exit(1)
     return responses
 
+def extractParams(urls: str):
+    result = []
+    for url in urls:
+        try:
+            parsed_url = urlparse(url)
+            captured_value = parse_qs(parsed_url.query)
+            if captured_value != {}:
+                result += list(captured_value.keys())
+        except Exception as e:
+            logger(args.debug, "{}".format(e))
+    return result
 args = setup_argparse()
 
 def main():
@@ -172,7 +187,12 @@ def main():
     if args.c == True:
         logger(args.debug, "Concatinating paths with the site url.")
         results = concatinate(args,results)
+        extractParams(results)
     logger(args.debug, "Total number of paths found : {}".format(len(results)))
+    if args.p == True:
+        logger(args.debug, "Extracting paramters from old robots.txt files...")
+        results = extractParams(concatinate(args,results))
+        logger(args.debug, "Total number of paramters found : {}".format(len(results)))
     if args.output != False:
         logger(args.debug, "Writing the output to {}".format(args.output))
         with open(args.output,'w') as f:
