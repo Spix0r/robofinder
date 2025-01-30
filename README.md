@@ -10,6 +10,7 @@
 - Multi-threading support for faster processing.
 - Option to concatenate extracted paths with the base URL for easy access.
 - Debug mode for detailed execution logs.
+- Extract old parameters from robots.txt files.
 
 ## Installation
 
@@ -57,6 +58,11 @@ python3 robofinder.py -u https://example.com
   robofinder -u https://example.com -c
   ```
 
+- **Extract Paramters**:
+  ```bash
+  robofinder -u https://example.com -p
+  ```
+
 - **Enable Debug Mode**:
   ```bash
   robofinder -u https://example.com --debug
@@ -75,9 +81,9 @@ robofinder -u https://example.com -t 10 -c -o results.txt -s
 
 ## Example Output
 
-Running Robofinder on `example.com` with 10 threads, silent mode, and saving the result to `results.txt`:
+Running Robofinder on `example.com` with 10 threads, silent mode, and saving just the paramters to the `results.txt`:
 ```bash
-robofinder -u https://example.com -t 10 -o results.txt -s
+robofinder -u https://example.com -t 10 -o results.txt -s -p
 ```
 
 ## Contributing
